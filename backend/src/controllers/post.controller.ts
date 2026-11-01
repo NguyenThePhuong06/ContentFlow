@@ -8,7 +8,10 @@ import { encrypt } from '../utils/crypto.js';
 
 const CreatePostSchema = z.object({
   content: z.string().min(1, 'Content cannot be empty'),
-  channelIds: z.array(z.string()).min(1, 'Select at least one channel'),
+  channelIds: z.array(z.string()).min(1, 'Select at least one channel').refine(
+    (channelIds) => new Set(channelIds).size === channelIds.length,
+    'Channels must be unique'
+  ),
   scheduledAt: z.string().datetime().optional(),
 });
 
@@ -32,30 +35,28 @@ async function ensureDefaultUserAndChannels(userId: string) {
     },
   });
 
-  // 2. Ensure channels exist for this user
-  const channelCount = await prisma.channel.count({ where: { userId } });
-  if (channelCount === 0) {
-    const defaultChannels = [
-      { platform: 'FACEBOOK' as const, name: 'Facebook Page Demo', accountId: 'fb_page_demo_101' },
-      { platform: 'LINKEDIN' as const, name: 'LinkedIn Company Demo', accountId: 'li_org_demo_202' },
-      { platform: 'TWITTER' as const, name: 'X / Twitter Feed Demo', accountId: 'tw_feed_demo_303' },
-    ];
+  // 2. Ensure basic demo channels exist for this user
+  const defaultChannels = [
+    { platform: 'FACEBOOK' as const, name: 'Facebook Page Demo', accountId: 'fb_page_demo_101' },
+    { platform: 'LINKEDIN' as const, name: 'LinkedIn Company Demo', accountId: 'li_org_demo_202' },
+    { platform: 'TWITTER' as const, name: 'X / Twitter Feed Demo', accountId: 'tw_feed_demo_303' },
+  ];
 
-    for (const ch of defaultChannels) {
+  await prisma.channel.createMany({
+    data: defaultChannels.map((channel) => {
       const encrypted = encrypt('demo_oauth_access_token_token123');
-      await prisma.channel.create({
-        data: {
+      return {
           userId,
-          platform: ch.platform,
-          accountName: ch.name,
-          platformAccountId: ch.accountId,
+          platform: channel.platform,
+          accountName: channel.name,
+          platformAccountId: channel.accountId,
           encryptedToken: encrypted.ciphertext,
           tokenIv: encrypted.iv,
           tokenAuthTag: encrypted.authTag,
-        },
-      });
-    }
-  }
+      };
+    }),
+    skipDuplicates: true,
+  });
 }
 
 export const PostController = {
@@ -89,7 +90,13 @@ export const PostController = {
 
       const posts = await prisma.post.findMany({
         where: { userId },
-        include: { targets: { include: { channel: true } } },
+        include: {
+          targets: {
+            include: {
+              channel: { select: { id: true, platform: true, accountName: true } },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
       res.json(posts);
@@ -112,6 +119,13 @@ export const PostController = {
       const userId = req.user?.userId || DEFAULT_DEV_USER.userId;
 
       await ensureDefaultUserAndChannels(userId);
+      const ownedChannels = await prisma.channel.count({
+        where: { userId, id: { in: channelIds } },
+      });
+      if (ownedChannels !== channelIds.length) {
+        res.status(400).json({ error: 'One or more selected channels are unavailable' });
+        return;
+      }
 
       const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
       const isFutureSchedule = scheduledDate && scheduledDate.getTime() > Date.now();
@@ -129,7 +143,13 @@ export const PostController = {
             })),
           },
         },
-        include: { targets: { include: { channel: true } } },
+        include: {
+          targets: {
+            include: {
+              channel: { select: { id: true, platform: true, accountName: true } },
+            },
+          },
+        },
       });
 
       // If immediate or scheduled for past/now, push directly to queue worker

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { AuthController } from './controllers/auth.controller.js';
 import { PostController } from './controllers/post.controller.js';
 import { requireAuth } from './utils/jwt.js';
 
@@ -12,6 +13,9 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.post('/api/auth/register', AuthController.register);
+app.post('/api/auth/login', AuthController.login);
 
 // Channels route
 app.get('/api/channels', requireAuth, PostController.listChannels);
