@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { apiRequest } from '../services/api';
 
+export interface Channel {
+  id: string;
+  platform: 'FACEBOOK' | 'LINKEDIN' | 'TWITTER';
+  accountName: string;
+}
+
 export interface PostTarget {
   id: string;
   status: 'SCHEDULED' | 'PUBLISHED' | 'FAILED';
@@ -21,20 +27,32 @@ export interface Post {
 
 interface PostState {
   posts: Post[];
+  channels: Channel[];
   isLoading: boolean;
   isAiGenerating: boolean;
   error: string | null;
 
   fetchPosts: () => Promise<void>;
+  fetchChannels: () => Promise<void>;
   createPost: (data: { content: string; channelIds: string[]; scheduledAt?: string }) => Promise<void>;
   generateDraft: (prompt: string, tone?: string) => Promise<string>;
 }
 
 export const usePostStore = create<PostState>((set, get) => ({
   posts: [],
+  channels: [],
   isLoading: false,
   isAiGenerating: false,
   error: null,
+
+  fetchChannels: async () => {
+    try {
+      const channels = await apiRequest<Channel[]>('/channels');
+      set({ channels });
+    } catch (err) {
+      console.warn('[postStore] Failed to fetch channels:', err);
+    }
+  },
 
   fetchPosts: async () => {
     set({ isLoading: true, error: null });
@@ -61,16 +79,18 @@ export const usePostStore = create<PostState>((set, get) => ({
   },
 
   generateDraft: async (prompt, tone = 'engaging') => {
-    set({ isAiGenerating: true });
+    set({ isAiGenerating: true, error: null });
     try {
       const res = await apiRequest<{ content: string }>('/posts/ai-generate', {
         method: 'POST',
         body: JSON.stringify({ prompt, tone }),
       });
       return res.content;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      throw err;
     } finally {
       set({ isAiGenerating: false });
     }
   },
 }));
-

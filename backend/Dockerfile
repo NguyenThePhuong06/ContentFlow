@@ -13,7 +13,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Install only production dependencies
+# Install production dependencies including prisma CLI for migrations
 COPY package*.json ./
 COPY prisma ./prisma/
 RUN npm ci --omit=dev && npx prisma generate
@@ -24,4 +24,3 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 4000
 USER node
 CMD ["node", "dist/index.js"]
-
