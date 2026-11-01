@@ -78,6 +78,8 @@ cd contentflow
 
 # 2. Tạo file biến môi trường từ mẫu
 cp .env.example .env
+sed -i "s/^APP_SECRET=.*/APP_SECRET=$(openssl rand -hex 32)/" .env
+sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" .env
 
 # 3. Khởi động toàn bộ container
 docker compose up -d --build
@@ -87,6 +89,12 @@ docker compose up -d --build
 - **Giao diện Web**: [http://localhost](http://localhost) (Port 80)
 - **API Server**: [http://localhost:4000](http://localhost:4000)
 - **RabbitMQ Management Dashboard**: [http://localhost:15672](http://localhost:15672) (User: `guest` / Pass: `guest`)
+
+Backend tự chạy migration khi khởi động Docker. Lần đầu mở ứng dụng sẽ tự tạo ba kênh demo Facebook, LinkedIn và X/Twitter; kênh demo mô phỏng việc đăng bài, chưa kết nối tài khoản mạng xã hội thật.
+
+Tạo tài khoản bằng email và mật khẩu (tối thiểu 8 ký tự) ngay trên màn hình đăng nhập. Mật khẩu được băm bằng scrypt; API bài viết và kênh yêu cầu JWT hợp lệ. Trước khi triển khai công khai, cấu hình `JWT_SECRET` ngẫu nhiên tối thiểu 32 ký tự và phục vụ giao diện qua HTTPS.
+
+Với VPS, chạy `deploy.sh` cùng `DOMAIN` và `EMAIL`; sau khi Certbot cấp chứng chỉ, frontend sẽ tự bật HTTPS và chuyển hướng HTTP sang HTTPS. Chế độ local dùng HTTP tại `http://localhost`.
 
 ---
 
@@ -217,4 +225,3 @@ Dự án được phân phối dưới giấy phép **MIT License**. Vui lòng t
 <p align="center">
   Xây dựng với niềm đam mê kiến trúc phần mềm tinh gọn ❤️ <strong>ContentFlow Team</strong>
 </p>
-

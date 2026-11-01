@@ -68,6 +68,8 @@ services:
       dockerfile: Dockerfile
     container_name: contentflow_frontend
     restart: unless-stopped
+    environment:
+      DOMAIN: "${DOMAIN:-localhost}"
     ports:
       - "80:80"
       - "443:443"
@@ -81,4 +83,3 @@ volumes:
   mysql_data:
   redis_data:
   rabbitmq_data:
-

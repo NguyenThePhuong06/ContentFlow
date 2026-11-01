@@ -19,6 +19,15 @@ if [ ! -f .env ]; then
   echo "Created .env with secure random secret."
 fi
 
+if ! grep -q '^JWT_SECRET=.\+' .env || grep -q '^JWT_SECRET=super_secret_jwt_key_here$' .env; then
+  JWT_SECRET=$(openssl rand -hex 32)
+  if grep -q '^JWT_SECRET=' .env; then
+    sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$JWT_SECRET/" .env
+  else
+    echo "JWT_SECRET=$JWT_SECRET" >> .env
+  fi
+fi
+
 echo "🐳 [2/4] Building and launching containers..."
 docker compose down --remove-orphans
 docker compose up -d --build
@@ -44,4 +53,3 @@ else
 fi
 
 echo "✨ ContentFlow deployed successfully! Visit: http://$DOMAIN"
-

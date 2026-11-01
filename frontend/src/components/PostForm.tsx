@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usePostStore } from '../store/postStore';
-import { Sparkles, Send, Loader2, AlertCircle, CheckSquare, Square } from 'lucide-react';
+import { Sparkles, Send, Loader2, AlertCircle, CheckSquare, Square, RefreshCw } from 'lucide-react';
 
 export const PostForm: React.FC = () => {
   const [content, setContent] = useState('');
@@ -10,7 +10,17 @@ export const PostForm: React.FC = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { channels, fetchChannels, createPost, generateDraft, isLoading, isAiGenerating, error } = usePostStore();
+  const {
+    channels,
+    fetchChannels,
+    createPost,
+    generateDraft,
+    isLoading,
+    isChannelsLoading,
+    isAiGenerating,
+    error,
+    channelError,
+  } = usePostStore();
 
   useEffect(() => {
     fetchChannels();
@@ -133,6 +143,19 @@ export const PostForm: React.FC = () => {
       {/* Channel Selector */}
       <div>
         <label className="block text-xs font-medium text-slate-700 mb-2">Chọn kênh phân phối:</label>
+        {channelError && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+            <span>{channelError}</span>
+            <button
+              type="button"
+              onClick={() => fetchChannels()}
+              className="inline-flex shrink-0 items-center gap-1 font-medium hover:text-rose-900"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Thử lại
+            </button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {channels.map((channel) => {
             const isSelected = selectedChannels.includes(channel.id);
@@ -152,8 +175,11 @@ export const PostForm: React.FC = () => {
               </button>
             );
           })}
-          {channels.length === 0 && (
+          {channels.length === 0 && isChannelsLoading && (
             <span className="text-xs text-slate-400 italic">Đang tải danh sách kênh...</span>
+          )}
+          {channels.length === 0 && !isChannelsLoading && !channelError && (
+            <span className="text-xs text-slate-400 italic">Chưa có kênh phân phối khả dụng.</span>
           )}
         </div>
       </div>
@@ -172,7 +198,7 @@ export const PostForm: React.FC = () => {
 
         <button
           type="submit"
-          disabled={isLoading || !content.trim()}
+          disabled={isLoading || isChannelsLoading || channels.length === 0 || !content.trim()}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
         >
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

@@ -29,8 +29,10 @@ interface PostState {
   posts: Post[];
   channels: Channel[];
   isLoading: boolean;
+  isChannelsLoading: boolean;
   isAiGenerating: boolean;
   error: string | null;
+  channelError: string | null;
 
   fetchPosts: () => Promise<void>;
   fetchChannels: () => Promise<void>;
@@ -42,15 +44,21 @@ export const usePostStore = create<PostState>((set, get) => ({
   posts: [],
   channels: [],
   isLoading: false,
+  isChannelsLoading: false,
   isAiGenerating: false,
   error: null,
+  channelError: null,
 
   fetchChannels: async () => {
+    set({ isChannelsLoading: true, channelError: null });
     try {
       const channels = await apiRequest<Channel[]>('/channels');
-      set({ channels });
+      set({ channels, isChannelsLoading: false });
     } catch (err) {
-      console.warn('[postStore] Failed to fetch channels:', err);
+      set({
+        channelError: (err as Error).message,
+        isChannelsLoading: false,
+      });
     }
   },
 

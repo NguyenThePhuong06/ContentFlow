@@ -4,7 +4,7 @@ import { PostForm } from '../components/PostForm';
 import { PostCard } from '../components/PostCard';
 import { RefreshCw, Layers } from 'lucide-react';
 
-export const Dashboard: React.FC = () => {
+export const Dashboard: React.FC<{ userEmail: string; onLogout: () => void }> = ({ userEmail, onLogout }) => {
   const { posts, fetchPosts, isLoading } = usePostStore();
 
   useEffect(() => {
@@ -25,14 +25,23 @@ export const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => fetchPosts()}
-          disabled={isLoading}
-          className="p-2 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
-          title="Tải lại danh sách"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="hidden text-sm text-slate-500 sm:inline">{userEmail}</span>
+          <button
+            onClick={() => fetchPosts()}
+            disabled={isLoading}
+            className="p-2 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+            title="Tải lại danh sách"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={onLogout}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
+          >
+            Đăng xuất
+          </button>
+        </div>
       </header>
 
       {/* Main Grid */}
@@ -60,4 +69,3 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
-
