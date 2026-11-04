@@ -1,9 +1,19 @@
 import { create } from 'zustand';
 import { apiRequest } from '../services/api';
 
+export type ChannelPlatform = 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN' | 'TWITTER';
+
+export const CHANNEL_PLATFORM_LABELS: Record<ChannelPlatform, string> = {
+  FACEBOOK: 'Facebook',
+  INSTAGRAM: 'Instagram',
+  TIKTOK: 'TikTok',
+  LINKEDIN: 'LinkedIn',
+  TWITTER: 'X / Twitter',
+};
+
 export interface Channel {
   id: string;
-  platform: 'FACEBOOK' | 'LINKEDIN' | 'TWITTER';
+  platform: ChannelPlatform;
   accountName: string;
 }
 
@@ -11,7 +21,7 @@ export interface PostTarget {
   id: string;
   status: 'SCHEDULED' | 'PUBLISHED' | 'FAILED';
   channel: {
-    platform: 'FACEBOOK' | 'LINKEDIN' | 'TWITTER';
+    platform: ChannelPlatform;
     accountName: string;
   };
 }

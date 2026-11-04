@@ -12,21 +12,27 @@ const UserStatusSchema = zod_1.z.object({
 });
 exports.AdminController = {
     async summary(_req, res) {
-        const [users, activeUsers, posts, byStatus, recentLogs] = await Promise.all([
-            db_js_1.prisma.user.count(),
-            db_js_1.prisma.user.count({ where: { status: 'ACTIVE' } }),
-            db_js_1.prisma.post.count(),
-            db_js_1.prisma.post.groupBy({ by: ['status'], _count: { _all: true } }),
-            db_js_1.prisma.auditLog.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }),
-        ]);
-        res.json({
-            users,
-            activeUsers,
-            suspendedUsers: users - activeUsers,
-            posts,
-            activityLast24Hours: recentLogs,
-            postsByStatus: Object.fromEntries(byStatus.map((row) => [row.status, row._count._all])),
-        });
+        try {
+            const [users, activeUsers, posts, byStatus, recentLogs] = await Promise.all([
+                db_js_1.prisma.user.count(),
+                db_js_1.prisma.user.count({ where: { status: 'ACTIVE' } }),
+                db_js_1.prisma.post.count(),
+                db_js_1.prisma.post.groupBy({ by: ['status'], _count: { _all: true } }),
+                db_js_1.prisma.auditLog.count({ where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }),
+            ]);
+            res.json({
+                users,
+                activeUsers,
+                suspendedUsers: users - activeUsers,
+                posts,
+                activityLast24Hours: recentLogs,
+                postsByStatus: Object.fromEntries(byStatus.map((row) => [row.status, row._count._all])),
+            });
+        }
+        catch (error) {
+            console.error('[AdminController.summary] Error:', error);
+            res.status(500).json({ error: 'Failed to load admin summary' });
+        }
     },
     async users(req, res) {
         const pagination = PaginationSchema.safeParse(req.query);
@@ -37,25 +43,31 @@ exports.AdminController = {
         const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 191) : '';
         const where = search ? { email: { contains: search } } : {};
         const { page, limit } = pagination.data;
-        const [users, total] = await Promise.all([
-            db_js_1.prisma.user.findMany({
-                where,
-                select: {
-                    id: true,
-                    email: true,
-                    role: true,
-                    status: true,
-                    createdAt: true,
-                    lastLoginAt: true,
-                    _count: { select: { posts: true, channels: true } },
-                },
-                orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
-            }),
-            db_js_1.prisma.user.count({ where }),
-        ]);
-        res.json({ users, page, limit, total });
+        try {
+            const [users, total] = await Promise.all([
+                db_js_1.prisma.user.findMany({
+                    where,
+                    select: {
+                        id: true,
+                        email: true,
+                        role: true,
+                        status: true,
+                        createdAt: true,
+                        lastLoginAt: true,
+                        _count: { select: { posts: true, channels: true } },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    skip: (page - 1) * limit,
+                    take: limit,
+                }),
+                db_js_1.prisma.user.count({ where }),
+            ]);
+            res.json({ users, page, limit, total });
+        }
+        catch (error) {
+            console.error('[AdminController.users] Error:', error);
+            res.status(500).json({ error: 'Failed to load users' });
+        }
     },
     async updateUserStatus(req, res) {
         const parsed = UserStatusSchema.safeParse(req.body);
@@ -98,7 +110,7 @@ exports.AdminController = {
                     },
                 });
                 return updated;
-            });
+            }, { isolationLevel: 'Serializable' });
             if (!result) {
                 res.status(404).json({ error: 'User not found' });
                 return;
@@ -121,23 +133,29 @@ exports.AdminController = {
             return;
         }
         const { page, limit } = pagination.data;
-        const [logs, total] = await Promise.all([
-            db_js_1.prisma.auditLog.findMany({
-                select: {
-                    id: true,
-                    actorEmail: true,
-                    action: true,
-                    targetUserId: true,
-                    details: true,
-                    createdAt: true,
-                },
-                orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
-            }),
-            db_js_1.prisma.auditLog.count(),
-        ]);
-        res.json({ logs, page, limit, total });
+        try {
+            const [logs, total] = await Promise.all([
+                db_js_1.prisma.auditLog.findMany({
+                    select: {
+                        id: true,
+                        actorEmail: true,
+                        action: true,
+                        targetUserId: true,
+                        details: true,
+                        createdAt: true,
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    skip: (page - 1) * limit,
+                    take: limit,
+                }),
+                db_js_1.prisma.auditLog.count(),
+            ]);
+            res.json({ logs, page, limit, total });
+        }
+        catch (error) {
+            console.error('[AdminController.logs] Error:', error);
+            res.status(500).json({ error: 'Failed to load audit logs' });
+        }
     },
     async posts(req, res) {
         const pagination = PaginationSchema.safeParse(req.query);
@@ -146,20 +164,26 @@ exports.AdminController = {
             return;
         }
         const { page, limit } = pagination.data;
-        const [posts, total] = await Promise.all([
-            db_js_1.prisma.post.findMany({
-                include: {
-                    user: { select: { id: true, email: true } },
-                    targets: {
-                        include: { channel: { select: { platform: true, accountName: true } } },
+        try {
+            const [posts, total] = await Promise.all([
+                db_js_1.prisma.post.findMany({
+                    include: {
+                        user: { select: { id: true, email: true } },
+                        targets: {
+                            include: { channel: { select: { platform: true, accountName: true } } },
+                        },
                     },
-                },
-                orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
-            }),
-            db_js_1.prisma.post.count(),
-        ]);
-        res.json({ posts, page, limit, total });
+                    orderBy: { createdAt: 'desc' },
+                    skip: (page - 1) * limit,
+                    take: limit,
+                }),
+                db_js_1.prisma.post.count(),
+            ]);
+            res.json({ posts, page, limit, total });
+        }
+        catch (error) {
+            console.error('[AdminController.posts] Error:', error);
+            res.status(500).json({ error: 'Failed to load posts' });
+        }
     },
 };

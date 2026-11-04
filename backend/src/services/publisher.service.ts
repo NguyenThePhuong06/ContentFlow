@@ -3,7 +3,7 @@ import { decrypt } from '../utils/crypto.js';
 export interface PublishPayload {
   channel: {
     id: string;
-    platform: 'FACEBOOK' | 'LINKEDIN' | 'TWITTER';
+    platform: 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'LINKEDIN' | 'TWITTER';
     platformAccountId: string;
     accountName: string;
     encryptedToken: string;

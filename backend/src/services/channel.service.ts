@@ -4,8 +4,9 @@ import { encrypt } from '../utils/crypto.js';
 
 const DEFAULT_CHANNELS: Array<{ platform: Platform; name: string; accountId: string }> = [
   { platform: 'FACEBOOK', name: 'Facebook Page Demo', accountId: 'fb_page_demo_101' },
+  { platform: 'INSTAGRAM', name: 'Instagram Business Demo', accountId: 'ig_business_demo_404' },
+  { platform: 'TIKTOK', name: 'TikTok Account Demo', accountId: 'tiktok_account_demo_505' },
   { platform: 'LINKEDIN', name: 'LinkedIn Company Demo', accountId: 'li_org_demo_202' },
-  { platform: 'TWITTER', name: 'X / Twitter Feed Demo', accountId: 'tw_feed_demo_303' },
 ];
 
 export async function ensureDefaultChannels(userId: string): Promise<void> {

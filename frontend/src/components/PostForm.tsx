@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { usePostStore } from '../store/postStore';
+import { CHANNEL_PLATFORM_LABELS, usePostStore } from '../store/postStore';
 import { Sparkles, Send, Loader2, AlertCircle, CheckSquare, Square, RefreshCw } from 'lucide-react';
 
 export const PostForm: React.FC = () => {
@@ -171,7 +171,7 @@ export const PostForm: React.FC = () => {
                 }`}
               >
                 {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-blue-600" /> : <Square className="w-3.5 h-3.5 text-slate-400" />}
-                {channel.accountName} ({channel.platform})
+                {channel.accountName} ({CHANNEL_PLATFORM_LABELS[channel.platform]})
               </button>
             );
           })}

@@ -90,7 +90,7 @@ docker compose up -d --build
 - **API Server**: [http://localhost:4000](http://localhost:4000)
 - **RabbitMQ Management Dashboard**: [http://localhost:15672](http://localhost:15672) (User: `guest` / Pass: `guest`)
 
-Backend tự chạy migration khi khởi động Docker. Lần đầu mở ứng dụng sẽ tự tạo ba kênh demo Facebook, LinkedIn và X/Twitter; kênh demo mô phỏng việc đăng bài, chưa kết nối tài khoản mạng xã hội thật.
+Backend tự chạy migration khi khởi động Docker. Lần đầu mở ứng dụng sẽ tự tạo bốn kênh demo Facebook, Instagram, TikTok và LinkedIn; kênh demo mô phỏng việc đăng bài, chưa kết nối tài khoản mạng xã hội thật. X/Twitter hiện có vẫn được giữ và hỗ trợ cho các tài khoản đã sử dụng kênh này.
 
 Tạo tài khoản bằng email và mật khẩu (tối thiểu 8 ký tự) ngay trên màn hình đăng nhập. Mật khẩu được băm bằng scrypt; API bài viết và kênh yêu cầu JWT hợp lệ. Trước khi đăng ký tài khoản quản trị đầu tiên, đặt `ADMIN_EMAIL` bằng email đó trong `.env`; nếu tài khoản đã tồn tại, đăng xuất rồi đăng nhập lại bằng email đã cấu hình để bootstrap quyền admin. Trước khi triển khai công khai, cấu hình `JWT_SECRET` ngẫu nhiên tối thiểu 32 ký tự và phục vụ giao diện qua HTTPS.
 
@@ -117,7 +117,7 @@ npm install
 
 # Tạo cấu trúc database với Prisma
 npx prisma generate
-npx prisma migrate dev --name init
+npx prisma migrate dev
 
 # Chạy Backend ở chế độ Hot-reload
 npm run dev

@@ -9,6 +9,8 @@ generator client {
 
 enum Platform {
   FACEBOOK
+  INSTAGRAM
+  TIKTOK
   LINKEDIN
   TWITTER
 }

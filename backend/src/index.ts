@@ -4,7 +4,7 @@ import { app } from './app.js';
 import { startWorker } from './workers/post.worker.js';
 import { startScheduler } from './workers/scheduler.js';
 
-const PORT = Number(process.env.PORT) || 4000;
+const PORT = Number(process.env.PORT) || 4001;
 
 app.listen(PORT, async () => {
   console.log(`🚀 ContentFlow API running on http://localhost:${PORT}`);

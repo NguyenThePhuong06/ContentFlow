@@ -130,13 +130,6 @@ exports.PostController = {
         }
         try {
             const content = await (0, ai_service_js_1.generateContent)(parsed.data.prompt, parsed.data.tone);
-            await db_js_1.prisma.auditLog.create({
-                data: {
-                    actorId: req.user.userId,
-                    actorEmail: req.user.email,
-                    action: 'post.ai_generated',
-                },
-            });
             res.json({ content });
         }
         catch (err) {

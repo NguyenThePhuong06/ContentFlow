@@ -1,9 +1,11 @@
 import React from 'react';
-import { Facebook, Linkedin, Radio, Twitter } from 'lucide-react';
-import { usePostStore } from '../store/postStore';
+import { Facebook, Instagram, Linkedin, Music2, Radio, Twitter } from 'lucide-react';
+import { CHANNEL_PLATFORM_LABELS, usePostStore } from '../store/postStore';
 
 const platformIcons = {
   FACEBOOK: Facebook,
+  INSTAGRAM: Instagram,
+  TIKTOK: Music2,
   LINKEDIN: Linkedin,
   TWITTER: Twitter,
 } as const;
@@ -27,7 +29,7 @@ export const ChannelsPage: React.FC = () => {
                 <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">Demo</span>
               </div>
               <h3 className="mt-4 font-semibold text-slate-900">{channel.accountName}</h3>
-              <p className="mt-1 text-sm text-slate-500">{channel.platform}</p>
+              <p className="mt-1 text-sm text-slate-500">{CHANNEL_PLATFORM_LABELS[channel.platform]}</p>
               <p className="mt-3 text-xs text-slate-500">Mô phỏng phân phối, chưa kết nối tài khoản thật.</p>
             </article>
           );
@@ -41,7 +43,7 @@ export const ChannelsPage: React.FC = () => {
         </div>
       )}
       <p className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-        Để kết nối và đăng lên tài khoản Facebook, LinkedIn hoặc X thật, cần cấu hình OAuth credentials và quyền API tương ứng.
+        Các kênh demo mô phỏng việc phân phối. Để đăng lên tài khoản thật, cần kết nối OAuth và cấu hình quyền API tương ứng cho từng nền tảng.
       </p>
     </section>
   );

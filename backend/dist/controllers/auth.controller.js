@@ -36,7 +36,7 @@ exports.AuthController = {
                 },
             });
             res.status(201).json({
-                token: (0, jwt_js_1.signToken)({ userId: user.id, email: user.email }),
+                token: (0, jwt_js_1.signToken)({ userId: user.id, email: user.email, role }),
                 user: { ...user, role },
             });
         }
@@ -72,18 +72,24 @@ exports.AuthController = {
                 res.status(403).json({ error: 'This account has been suspended' });
                 return;
             }
+            const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+            const role = configuredAdminEmail === email ? 'ADMIN' : user.role;
             await db_js_1.prisma.$transaction([
                 db_js_1.prisma.user.update({
                     where: { id: user.id },
-                    data: { lastLoginAt: new Date() },
+                    data: { lastLoginAt: new Date(), role },
                 }),
                 db_js_1.prisma.auditLog.create({
-                    data: { actorId: user.id, actorEmail: user.email, action: 'auth.login' },
+                    data: {
+                        actorId: user.id,
+                        actorEmail: user.email,
+                        action: role !== user.role ? 'auth.admin_bootstrapped' : 'auth.login',
+                    },
                 }),
             ]);
             res.json({
-                token: (0, jwt_js_1.signToken)({ userId: user.id, email: user.email }),
-                user: { id: user.id, email: user.email, role: user.role },
+                token: (0, jwt_js_1.signToken)({ userId: user.id, email: user.email, role }),
+                user: { id: user.id, email: user.email, role },
             });
         }
         catch (error) {

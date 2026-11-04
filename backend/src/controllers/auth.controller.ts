@@ -39,7 +39,7 @@ export const AuthController = {
       });
 
       res.status(201).json({
-        token: signToken({ userId: user.id, email: user.email }),
+        token: signToken({ userId: user.id, email: user.email, role }),
         user: { ...user, role },
       });
     } catch (error) {
@@ -94,7 +94,7 @@ export const AuthController = {
       ]);
 
       res.json({
-        token: signToken({ userId: user.id, email: user.email }),
+        token: signToken({ userId: user.id, email: user.email, role }),
         user: { id: user.id, email: user.email, role },
       });
     } catch (error) {

@@ -10,15 +10,21 @@ const ChangePasswordSchema = zod_1.z.object({
 });
 exports.AccountController = {
     async profile(req, res) {
-        const user = await db_js_1.prisma.user.findUnique({
-            where: { id: req.user.userId },
-            select: { id: true, email: true, role: true, status: true, createdAt: true, lastLoginAt: true },
-        });
-        if (!user) {
-            res.status(404).json({ error: 'Account not found' });
-            return;
+        try {
+            const user = await db_js_1.prisma.user.findUnique({
+                where: { id: req.user.userId },
+                select: { id: true, email: true, role: true, status: true, createdAt: true, lastLoginAt: true },
+            });
+            if (!user) {
+                res.status(404).json({ error: 'Account not found' });
+                return;
+            }
+            res.json(user);
         }
-        res.json(user);
+        catch (error) {
+            console.error('[AccountController.profile] Error:', error);
+            res.status(500).json({ error: 'Failed to load account profile' });
+        }
     },
     async changePassword(req, res) {
         const parsed = ChangePasswordSchema.safeParse(req.body);
