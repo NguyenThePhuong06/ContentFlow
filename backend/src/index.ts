@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config.js';
 
 import { app } from './app.js';
 import { startWorker } from './workers/post.worker.js';

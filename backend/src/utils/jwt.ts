@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../db.js';
 
 const configuredSecret = process.env.JWT_SECRET;
 if (
@@ -10,15 +11,12 @@ if (
 }
 
 const JWT_SECRET = configuredSecret || 'jwt-fallback-secret-for-dev';
-export const DEFAULT_DEV_USER = {
-  userId: '00000000-0000-0000-0000-000000000001',
-  email: 'admin@contentflow.io',
-};
 
 export interface AuthRequest extends Request {
   user?: {
     userId: string;
     email: string;
+    role: 'USER' | 'ADMIN';
   };
 }
 
@@ -29,33 +27,52 @@ export function signToken(payload: { userId: string; email: string }): string {
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 
-  // If no auth token provided, fallback to default dev user in development mode
   if (!authHeader?.startsWith('Bearer ')) {
-    if (process.env.NODE_ENV !== 'production') {
-      req.user = DEFAULT_DEV_USER;
-      return next();
-    }
     res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
     return;
   }
 
   const token = authHeader.split(' ')[1];
+  let userId: string;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const verified = jwt.verify(token, JWT_SECRET);
     if (
-      typeof decoded === 'string' ||
-      typeof decoded.userId !== 'string' ||
-      typeof decoded.email !== 'string'
+      typeof verified === 'string' ||
+      typeof verified.userId !== 'string' ||
+      typeof verified.email !== 'string'
     ) {
       throw new Error('Invalid token payload');
     }
-    req.user = { userId: decoded.userId, email: decoded.email };
-    next();
+    userId = verified.userId;
   } catch {
-    if (process.env.NODE_ENV !== 'production') {
-      req.user = DEFAULT_DEV_USER;
-      return next();
-    }
     res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    return;
   }
+
+  void prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true, status: true },
+  }).then((user) => {
+    if (!user) {
+      res.status(401).json({ error: 'Unauthorized: Account not found' });
+      return;
+    }
+    if (user.status === 'SUSPENDED') {
+      res.status(403).json({ error: 'This account has been suspended' });
+      return;
+    }
+    req.user = { userId: user.id, email: user.email, role: user.role };
+    next();
+  }).catch((error: unknown) => {
+    console.error('[requireAuth] Failed to load account:', error);
+    res.status(500).json({ error: 'Failed to authenticate request' });
+  });
+}
+
+export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
+  if (req.user?.role !== 'ADMIN') {
+    res.status(403).json({ error: 'Administrator access required' });
+    return;
+  }
+  next();
 }

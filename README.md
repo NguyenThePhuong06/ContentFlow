@@ -92,7 +92,7 @@ docker compose up -d --build
 
 Backend tự chạy migration khi khởi động Docker. Lần đầu mở ứng dụng sẽ tự tạo ba kênh demo Facebook, LinkedIn và X/Twitter; kênh demo mô phỏng việc đăng bài, chưa kết nối tài khoản mạng xã hội thật.
 
-Tạo tài khoản bằng email và mật khẩu (tối thiểu 8 ký tự) ngay trên màn hình đăng nhập. Mật khẩu được băm bằng scrypt; API bài viết và kênh yêu cầu JWT hợp lệ. Trước khi triển khai công khai, cấu hình `JWT_SECRET` ngẫu nhiên tối thiểu 32 ký tự và phục vụ giao diện qua HTTPS.
+Tạo tài khoản bằng email và mật khẩu (tối thiểu 8 ký tự) ngay trên màn hình đăng nhập. Mật khẩu được băm bằng scrypt; API bài viết và kênh yêu cầu JWT hợp lệ. Trước khi đăng ký tài khoản quản trị đầu tiên, đặt `ADMIN_EMAIL` bằng email đó trong `.env`; nếu tài khoản đã tồn tại, đăng xuất rồi đăng nhập lại bằng email đã cấu hình để bootstrap quyền admin. Trước khi triển khai công khai, cấu hình `JWT_SECRET` ngẫu nhiên tối thiểu 32 ký tự và phục vụ giao diện qua HTTPS.
 
 Với VPS, chạy `deploy.sh` cùng `DOMAIN` và `EMAIL`; sau khi Certbot cấp chứng chỉ, frontend sẽ tự bật HTTPS và chuyển hướng HTTP sang HTTPS. Chế độ local dùng HTTP tại `http://localhost`.
 
@@ -122,7 +122,11 @@ npx prisma migrate dev --name init
 # Chạy Backend ở chế độ Hot-reload
 npm run dev
 ```
-> Backend API sẽ lắng nghe tại: `http://localhost:4000`
+> Backend API chạy local mặc định tại: `http://localhost:4001`
+
+> Nếu đang giữ Docker backend chạy trên cổng `4000`, backend local dùng cổng `4001` để không bị `EADDRINUSE`; frontend Vite proxy API sang `4001`.
+
+Đặt `ADMIN_EMAIL` trong `.env` trước khi đăng ký tài khoản quản trị đầu tiên. Sau đó đăng nhập bằng email đó để thấy mục **Admin**. Người dùng có thêm trang chủ, lịch, kênh, thống kê và hồ sơ/đổi mật khẩu; admin có quản lý tài khoản, khóa/mở khóa, thống kê, bài đăng và nhật ký hoạt động. Các kênh hiện là demo; OAuth và số liệu tương tác mạng xã hội thật chưa được cấu hình.
 
 #### Bước 3: Thiết lập Frontend
 Mở một cửa sổ Terminal mới:

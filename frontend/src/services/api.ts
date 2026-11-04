@@ -16,6 +16,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
     if (res.status === 401 && token) {
       localStorage.removeItem('token');
       localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
       window.dispatchEvent(new Event('contentflow:unauthorized'));
     }
     const errorBody = await res.json().catch(() => ({}));

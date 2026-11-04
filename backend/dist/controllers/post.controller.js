@@ -3,63 +3,24 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PostController = void 0;
 const zod_1 = require("zod");
 const db_js_1 = require("../db.js");
-const jwt_js_1 = require("../utils/jwt.js");
 const queue_js_1 = require("../workers/queue.js");
 const ai_service_js_1 = require("../services/ai.service.js");
-const crypto_js_1 = require("../utils/crypto.js");
+const channel_service_js_1 = require("../services/channel.service.js");
 const CreatePostSchema = zod_1.z.object({
     content: zod_1.z.string().min(1, 'Content cannot be empty'),
-    channelIds: zod_1.z.array(zod_1.z.string()).min(1, 'Select at least one channel'),
+    channelIds: zod_1.z.array(zod_1.z.string()).min(1, 'Select at least one channel').refine((channelIds) => new Set(channelIds).size === channelIds.length, 'Channels must be unique'),
     scheduledAt: zod_1.z.string().datetime().optional(),
 });
 const GenerateDraftSchema = zod_1.z.object({
     prompt: zod_1.z.string().min(2, 'Prompt must be at least 2 characters'),
     tone: zod_1.z.string().optional(),
 });
-/**
- * Lean helper to ensure default user and channels exist for immediate testing
- */
-async function ensureDefaultUserAndChannels(userId) {
-    // 1. Ensure user exists
-    await db_js_1.prisma.user.upsert({
-        where: { id: userId },
-        update: {},
-        create: {
-            id: userId,
-            email: 'admin@contentflow.io',
-            password: 'default_hashed_password',
-        },
-    });
-    // 2. Ensure channels exist for this user
-    const channelCount = await db_js_1.prisma.channel.count({ where: { userId } });
-    if (channelCount === 0) {
-        const defaultChannels = [
-            { platform: 'FACEBOOK', name: 'Facebook Page Demo', accountId: 'fb_page_demo_101' },
-            { platform: 'LINKEDIN', name: 'LinkedIn Company Demo', accountId: 'li_org_demo_202' },
-            { platform: 'TWITTER', name: 'X / Twitter Feed Demo', accountId: 'tw_feed_demo_303' },
-        ];
-        for (const ch of defaultChannels) {
-            const encrypted = (0, crypto_js_1.encrypt)('demo_oauth_access_token_token123');
-            await db_js_1.prisma.channel.create({
-                data: {
-                    userId,
-                    platform: ch.platform,
-                    accountName: ch.name,
-                    platformAccountId: ch.accountId,
-                    encryptedToken: encrypted.ciphertext,
-                    tokenIv: encrypted.iv,
-                    tokenAuthTag: encrypted.authTag,
-                },
-            });
-        }
-    }
-}
 exports.PostController = {
     // GET /api/channels
     async listChannels(req, res) {
         try {
-            const userId = req.user?.userId || jwt_js_1.DEFAULT_DEV_USER.userId;
-            await ensureDefaultUserAndChannels(userId);
+            const userId = req.user.userId;
+            await (0, channel_service_js_1.ensureDefaultChannels)(userId);
             const channels = await db_js_1.prisma.channel.findMany({
                 where: { userId },
                 select: {
@@ -79,11 +40,17 @@ exports.PostController = {
     // GET /api/posts
     async list(req, res) {
         try {
-            const userId = req.user?.userId || jwt_js_1.DEFAULT_DEV_USER.userId;
-            await ensureDefaultUserAndChannels(userId);
+            const userId = req.user.userId;
+            await (0, channel_service_js_1.ensureDefaultChannels)(userId);
             const posts = await db_js_1.prisma.post.findMany({
                 where: { userId },
-                include: { targets: { include: { channel: true } } },
+                include: {
+                    targets: {
+                        include: {
+                            channel: { select: { id: true, platform: true, accountName: true } },
+                        },
+                    },
+                },
                 orderBy: { createdAt: 'desc' },
             });
             res.json(posts);
@@ -102,8 +69,15 @@ exports.PostController = {
         }
         try {
             const { content, channelIds, scheduledAt } = parsed.data;
-            const userId = req.user?.userId || jwt_js_1.DEFAULT_DEV_USER.userId;
-            await ensureDefaultUserAndChannels(userId);
+            const userId = req.user.userId;
+            await (0, channel_service_js_1.ensureDefaultChannels)(userId);
+            const ownedChannels = await db_js_1.prisma.channel.count({
+                where: { userId, id: { in: channelIds } },
+            });
+            if (ownedChannels !== channelIds.length) {
+                res.status(400).json({ error: 'One or more selected channels are unavailable' });
+                return;
+            }
             const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
             const isFutureSchedule = scheduledDate && scheduledDate.getTime() > Date.now();
             const post = await db_js_1.prisma.post.create({
@@ -119,7 +93,22 @@ exports.PostController = {
                         })),
                     },
                 },
-                include: { targets: { include: { channel: true } } },
+                include: {
+                    targets: {
+                        include: {
+                            channel: { select: { id: true, platform: true, accountName: true } },
+                        },
+                    },
+                },
+            });
+            await db_js_1.prisma.auditLog.create({
+                data: {
+                    actorId: userId,
+                    actorEmail: req.user.email,
+                    action: 'post.created',
+                    targetUserId: userId,
+                    details: JSON.stringify({ postId: post.id, channelCount: channelIds.length }),
+                },
             });
             // If immediate or scheduled for past/now, push directly to queue worker
             if (!isFutureSchedule) {
@@ -141,6 +130,13 @@ exports.PostController = {
         }
         try {
             const content = await (0, ai_service_js_1.generateContent)(parsed.data.prompt, parsed.data.tone);
+            await db_js_1.prisma.auditLog.create({
+                data: {
+                    actorId: req.user.userId,
+                    actorEmail: req.user.email,
+                    action: 'post.ai_generated',
+                },
+            });
             res.json({ content });
         }
         catch (err) {

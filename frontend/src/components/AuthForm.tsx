@@ -4,11 +4,11 @@ import { apiRequest } from '../services/api';
 
 interface AuthResponse {
   token: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; role: 'USER' | 'ADMIN' };
 }
 
 export const AuthForm: React.FC<{
-  onAuthenticated: (token: string, email: string) => void;
+  onAuthenticated: (token: string, email: string, role: 'USER' | 'ADMIN') => void;
 }> = ({ onAuthenticated }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
@@ -29,7 +29,7 @@ export const AuthForm: React.FC<{
           body: JSON.stringify({ email, password }),
         }
       );
-      onAuthenticated(response.token, response.user.email);
+      onAuthenticated(response.token, response.user.email, response.user.role);
     } catch (requestError) {
       setError((requestError as Error).message);
     } finally {

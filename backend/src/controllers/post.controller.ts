@@ -1,10 +1,10 @@
 import { Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
-import { AuthRequest, DEFAULT_DEV_USER } from '../utils/jwt.js';
+import { AuthRequest } from '../utils/jwt.js';
 import { enqueuePost } from '../workers/queue.js';
 import { generateContent } from '../services/ai.service.js';
-import { encrypt } from '../utils/crypto.js';
+import { ensureDefaultChannels } from '../services/channel.service.js';
 
 const CreatePostSchema = z.object({
   content: z.string().min(1, 'Content cannot be empty'),
@@ -20,51 +20,12 @@ const GenerateDraftSchema = z.object({
   tone: z.string().optional(),
 });
 
-/**
- * Lean helper to ensure default user and channels exist for immediate testing
- */
-async function ensureDefaultUserAndChannels(userId: string) {
-  // 1. Ensure user exists
-  await prisma.user.upsert({
-    where: { id: userId },
-    update: {},
-    create: {
-      id: userId,
-      email: 'admin@contentflow.io',
-      password: 'default_hashed_password',
-    },
-  });
-
-  // 2. Ensure basic demo channels exist for this user
-  const defaultChannels = [
-    { platform: 'FACEBOOK' as const, name: 'Facebook Page Demo', accountId: 'fb_page_demo_101' },
-    { platform: 'LINKEDIN' as const, name: 'LinkedIn Company Demo', accountId: 'li_org_demo_202' },
-    { platform: 'TWITTER' as const, name: 'X / Twitter Feed Demo', accountId: 'tw_feed_demo_303' },
-  ];
-
-  await prisma.channel.createMany({
-    data: defaultChannels.map((channel) => {
-      const encrypted = encrypt('demo_oauth_access_token_token123');
-      return {
-          userId,
-          platform: channel.platform,
-          accountName: channel.name,
-          platformAccountId: channel.accountId,
-          encryptedToken: encrypted.ciphertext,
-          tokenIv: encrypted.iv,
-          tokenAuthTag: encrypted.authTag,
-      };
-    }),
-    skipDuplicates: true,
-  });
-}
-
 export const PostController = {
   // GET /api/channels
   async listChannels(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId || DEFAULT_DEV_USER.userId;
-      await ensureDefaultUserAndChannels(userId);
+      const userId = req.user!.userId;
+      await ensureDefaultChannels(userId);
 
       const channels = await prisma.channel.findMany({
         where: { userId },
@@ -85,8 +46,8 @@ export const PostController = {
   // GET /api/posts
   async list(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId || DEFAULT_DEV_USER.userId;
-      await ensureDefaultUserAndChannels(userId);
+      const userId = req.user!.userId;
+      await ensureDefaultChannels(userId);
 
       const posts = await prisma.post.findMany({
         where: { userId },
@@ -116,9 +77,9 @@ export const PostController = {
 
     try {
       const { content, channelIds, scheduledAt } = parsed.data;
-      const userId = req.user?.userId || DEFAULT_DEV_USER.userId;
+      const userId = req.user!.userId;
 
-      await ensureDefaultUserAndChannels(userId);
+      await ensureDefaultChannels(userId);
       const ownedChannels = await prisma.channel.count({
         where: { userId, id: { in: channelIds } },
       });
@@ -149,6 +110,16 @@ export const PostController = {
               channel: { select: { id: true, platform: true, accountName: true } },
             },
           },
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          actorId: userId,
+          actorEmail: req.user!.email,
+          action: 'post.created',
+          targetUserId: userId,
+          details: JSON.stringify({ postId: post.id, channelCount: channelIds.length }),
         },
       });
 

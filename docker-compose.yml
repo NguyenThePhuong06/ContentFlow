@@ -53,6 +53,7 @@ services:
       RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
       APP_SECRET: "${APP_SECRET}"
       JWT_SECRET: "${JWT_SECRET}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-}"
       GEMINI_API_KEY: "${GEMINI_API_KEY}"
     depends_on:
       mysql:
